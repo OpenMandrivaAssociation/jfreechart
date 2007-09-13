@@ -34,18 +34,16 @@
 
 Name:             jfreechart
 Version:          1.0.5
-Release:          1jpp
-Epoch:            0
+Release:          %mkrel 1
 Summary:          Charts Generation library
-License:          LGPL
+License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
 Source0:          http://downloads.sourceforge.net/jfreechart/jfreechart-1.0.5.tar.gz
 Patch0:           jfreechart-1.0.5-build_xml.patch
-Group:            Development/Libraries/Java
-Vendor: %{?_vendorinfo:%{_vendorinfo}}%{!?_vendorinfo:%{_vendor}}
-Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
+Group:            Development/Java
 Requires:         jcommon >= 0:1.0.9
 BuildRequires:    ant >= 0:1.6
+BuildRequires:    ant-junit >= 0:1.6
 BuildRequires:    jcommon >= 0:1.0.9
 BuildRequires:    jpackage-utils >= 0:1.6
 BuildRequires:    junit
@@ -102,7 +100,7 @@ done
 
 %build
 
-ant -f ant/build.xml \
+%ant -f ant/build.xml \
    -Djunit.jar=$(build-classpath junit) \
    -Djcommon.jar=$(build-classpath jcommon) \
    -Dservlet.jar=$(build-classpath servlet) \
