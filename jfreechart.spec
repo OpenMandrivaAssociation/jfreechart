@@ -28,13 +28,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+%define _with_gcj_support 1
 %define gcj_support %{?_with_gcj_support:1}%{!?_with_gcj_support:%{?_without_gcj_support:0}%{!?_without_gcj_support:%{?_gcj_support:%{_gcj_support}}%{!?_gcj_support:0}}}
 
 %define section   free
 
 Name:             jfreechart
 Version:          1.0.5
-Release:          %mkrel 1
+Release:          %mkrel 1.0.1
 Summary:          Charts Generation library
 License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
@@ -53,12 +54,9 @@ BuildRequires:    itext
 %if ! %{gcj_support}
 BuildArch:      noarch
 %endif
-BuildRoot:        %{_tmppath}/%{name}-%{version}-buildroot
+BuildRoot:        %{_tmppath}/%{name}-%{version}-%{release}-root
 %if %{gcj_support}
-BuildRequires:    gnu-crypto
 BuildRequires:    java-gcj-compat-devel
-Requires(post):   java-gcj-compat
-Requires(postun): java-gcj-compat
 %endif
 
 %description
@@ -79,8 +77,6 @@ Requires(postun): java-gcj-compat
 %package javadoc
 Summary:        Javadoc for %{name}
 Group:            Development/Java
-Requires(post):   /bin/rm,/bin/ln
-Requires(postun): /bin/rm
 
 %description javadoc
 Javadoc for %{name}.
@@ -93,21 +89,21 @@ Javadoc pour %{name}.
 # remove all binary libs
 # find . -name "*.jar" -exec rm -f {} \;
 for j in $(find . -name "*.jar"); do
-      mv $j $j.no
+      rm $j
 done
 
 %patch0 -b .sav
 
 %build
 
-%ant -f ant/build.xml \
+%{ant} -f ant/build.xml \
    -Djunit.jar=$(build-classpath junit) \
    -Djcommon.jar=$(build-classpath jcommon) \
    -Dservlet.jar=$(build-classpath servlet) \
    -Dgnujaxp.jar=$(build-classpath xml-commons-apis) \
    -Ditext.jar=$(build-classpath itext) \
    -Dbuildstable=true -Dproject.outdir=. -Dbasedir=. \
-   compile compile-experimental test javadoc maven-bundle
+   compile compile-experimental javadoc maven-bundle
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -120,24 +116,14 @@ install -m 644 %{name}-%{version}-experimental.jar $RPM_BUILD_ROOT%{_javadir}/%{
 # javadoc
 install -d -m 755 $RPM_BUILD_ROOT%{_javadocdir}/%{name}-%{version}
 cp -pr javadoc/* $RPM_BUILD_ROOT%{_javadocdir}/%{name}-%{version}
-ln -s %{name}-%{version} $RPM_BUILD_ROOT%{_javadocdir}/%{name} # ghost symlink
+ln -s %{name}-%{version} $RPM_BUILD_ROOT%{_javadocdir}/%{name}
 
 %if %{gcj_support}
-export CLASSPATH=$(build-classpath gnu-crypto)
 %{_bindir}/aot-compile-rpm
 %endif
 
 %clean
 rm -rf $RPM_BUILD_ROOT
-
-%post javadoc
-rm -f %{_javadocdir}/%{name}
-ln -s %{name}-%{version} %{_javadocdir}/%{name}
-
-%postun javadoc
-if [ "$1" = "0" ]; then
-    rm -f %{_javadocdir}/%{name}
-fi
 
 %if %{gcj_support}
 %post
@@ -177,7 +163,7 @@ fi
 %{_javadir}/%{name}.jar
 %{_javadir}/%{name}-%{version}.jar
 %if %{gcj_support}
-%dir %attr(-,root,root) %{_libdir}/gcj/%{name}
+%dir %{_libdir}/gcj/%{name}
 %attr(-,root,root) %{_libdir}/gcj/%{name}/%{name}-%{version}.jar.*
 %endif
 
@@ -192,4 +178,4 @@ fi
 %files javadoc
 %defattr(0644,root,root,0755)
 %{_javadocdir}/%{name}-%{version}
-%ghost %{_javadocdir}/%{name}
+%{_javadocdir}/%{name}
