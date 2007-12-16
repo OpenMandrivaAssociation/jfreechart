@@ -35,7 +35,7 @@
 
 Name:             jfreechart
 Version:          1.0.5
-Release:          %mkrel 1.0.1
+Release:          %mkrel 1.0.2
 Summary:          Charts Generation library
 License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
@@ -46,7 +46,7 @@ Requires:         jcommon >= 0:1.0.9
 BuildRequires:    ant >= 0:1.6
 BuildRequires:    ant-junit >= 0:1.6
 BuildRequires:    jcommon >= 0:1.0.9
-BuildRequires:    jpackage-utils >= 0:1.6
+BuildRequires:    java-rpmbuild >= 0:1.6
 BuildRequires:    junit
 BuildRequires:    servlet
 BuildRequires:    xml-commons-apis
