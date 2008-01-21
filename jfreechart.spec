@@ -34,12 +34,12 @@
 %define section   free
 
 Name:             jfreechart
-Version:          1.0.5
-Release:          %mkrel 1.0.2
+Version:          1.0.9
+Release:          %mkrel 0.0.1
 Summary:          Charts Generation library
 License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
-Source0:          http://downloads.sourceforge.net/jfreechart/jfreechart-1.0.5.tar.gz
+Source0:          http://downloads.sourceforge.net/jfreechart/jfreechart-%{version}.tar.gz
 Patch0:           jfreechart-1.0.5-build_xml.patch
 Group:            Development/Java
 Requires:         jcommon >= 0:1.0.9
@@ -86,12 +86,7 @@ Javadoc pour %{name}.
 
 %prep
 %setup -q
-# remove all binary libs
-# find . -name "*.jar" -exec rm -f {} \;
-for j in $(find . -name "*.jar"); do
-      rm $j
-done
-
+%remove_java_binaries
 %patch0 -b .sav
 
 %build
@@ -127,34 +122,22 @@ rm -rf $RPM_BUILD_ROOT
 
 %if %{gcj_support}
 %post
-if [ -x %{_bindir}/rebuild-gcj-db ]
-then
-  %{_bindir}/rebuild-gcj-db
-fi
+%{update_gcjdb}
 %endif
 
 %if %{gcj_support}
 %postun
-if [ -x %{_bindir}/rebuild-gcj-db ]
-then
-  %{_bindir}/rebuild-gcj-db
-fi
+%{clean_gcjdb}
 %endif
 
 %if %{gcj_support}
 %post experimental
-if [ -x %{_bindir}/rebuild-gcj-db ]
-then
-  %{_bindir}/rebuild-gcj-db
-fi
+%{update_gcjdb}
 %endif
 
 %if %{gcj_support}
 %postun experimental
-if [ -x %{_bindir}/rebuild-gcj-db ]
-then
-  %{_bindir}/rebuild-gcj-db
-fi
+%{clean_gcjdb}
 %endif
 
 %files
