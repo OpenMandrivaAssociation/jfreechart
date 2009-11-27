@@ -34,7 +34,7 @@
 
 Name:             jfreechart
 Version:          1.0.11
-Release:          %mkrel 0.0.2
+Release:          %mkrel 0.0.3
 Summary:          Charts Generation library
 License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
