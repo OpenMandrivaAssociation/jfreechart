@@ -32,19 +32,22 @@
 
 %define section   free
 
+%define jcommon_version 1.0.16
+
 Name:             jfreechart
-Version:          1.0.11
-Release:          %mkrel 0.0.3
+Version:          1.0.13
+Release:          %mkrel 1
 Summary:          Charts Generation library
 License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
-Source0:          http://downloads.sourceforge.net/jfreechart/jfreechart-%{version}.tar.gz
+Source0:          http://downloads.sourceforge.net/jfreechart/jfreechart-%{version}.tar.bz2
 Patch0:           jfreechart-1.0.5-build_xml.patch
+Patch1:           jfreechart-1.0.13-jarpath.patch
 Group:            Development/Java
-Requires:         jcommon >= 0:1.0.9
+Requires:         jcommon >= 0:%{jcommon_version}
 BuildRequires:    ant >= 0:1.6
 BuildRequires:    ant-junit >= 0:1.6
-BuildRequires:    jcommon >= 0:1.0.9
+BuildRequires:    jcommon >= 0:%{jcommon_version}
 BuildRequires:    java-rpmbuild >= 0:1.6
 BuildRequires:    junit
 BuildRequires:    servlet
@@ -87,6 +90,7 @@ Javadoc pour %{name}.
 %setup -q
 %remove_java_binaries
 %patch0 -b .sav
+%patch1
 
 %build
 
@@ -104,8 +108,8 @@ rm -rf $RPM_BUILD_ROOT
 install -d -m 755 $RPM_BUILD_ROOT%{_javadir}/%{name}
 # jars
 install -d -m 755 $RPM_BUILD_ROOT%{_javadir}
-install -m 644 %{name}-%{version}.jar $RPM_BUILD_ROOT%{_javadir}
-install -m 644 %{name}-%{version}-experimental.jar $RPM_BUILD_ROOT%{_javadir}/%{name}-experimental-%{version}.jar
+install -m 644 lib/%{name}-%{version}.jar $RPM_BUILD_ROOT%{_javadir}
+install -m 644 lib/%{name}-%{version}-experimental.jar $RPM_BUILD_ROOT%{_javadir}/%{name}-experimental-%{version}.jar
 (cd $RPM_BUILD_ROOT%{_javadir} && for jar in *-%{version}*.jar; do ln -sf ${jar} `echo $jar| sed  "s|-%{version}||g"`; done)
 # javadoc
 install -d -m 755 $RPM_BUILD_ROOT%{_javadocdir}/%{name}-%{version}
