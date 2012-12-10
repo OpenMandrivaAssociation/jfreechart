@@ -36,7 +36,7 @@
 
 Name:             jfreechart
 Version:          1.0.13
-Release:          %mkrel 1
+Release:          2
 Summary:          Charts Generation library
 License:          LGPLv2+
 URL:              http://www.jfree.org/jfreechart/
@@ -56,7 +56,6 @@ BuildRequires:    itext
 %if ! %{gcj_support}
 BuildArch:      noarch
 %endif
-BuildRoot:        %{_tmppath}/%{name}-%{version}-%{release}-root
 %if %{gcj_support}
 BuildRequires:    java-gcj-compat-devel
 %endif
@@ -89,8 +88,8 @@ Javadoc pour %{name}.
 %prep
 %setup -q
 %remove_java_binaries
-%patch0 -b .sav
-%patch1
+%patch0 -p0 -b .sav
+%patch1 -p0
 
 %build
 
@@ -163,3 +162,106 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(0644,root,root,0755)
 %{_javadocdir}/%{name}-%{version}
 %{_javadocdir}/%{name}
+
+
+%changelog
+* Fri Aug 06 2010 Jerome Martin <jmartin@mandriva.org> 1.0.13-1mdv2011.0
++ Revision: 566699
+- Version 1.0.13
+
+* Fri Nov 27 2009 Jerome Martin <jmartin@mandriva.org> 1.0.11-0.0.3mdv2010.1
++ Revision: 470675
+- rebuild
+
+* Fri Sep 11 2009 Thierry Vignaud <tv@mandriva.org> 1.0.11-0.0.2mdv2010.0
++ Revision: 438029
+- rebuild
+
+* Mon Oct 20 2008 Alexander Kurtakov <akurtakov@mandriva.org> 1.0.11-0.0.1mdv2009.1
++ Revision: 295815
+- 1.0.11
+
+* Fri Aug 08 2008 Thierry Vignaud <tv@mandriva.org> 1.0.10-2.0.1mdv2009.0
++ Revision: 267210
+- rebuild early 2009.0 package (before pixel changes)
+
+* Fri Jun 13 2008 Alexander Kurtakov <akurtakov@mandriva.org> 1.0.10-0.0.1mdv2009.0
++ Revision: 218684
+- new version 1.0.10 and disable gcj compile
+
+* Mon Jan 21 2008 Alexander Kurtakov <akurtakov@mandriva.org> 1.0.9-0.0.1mdv2008.1
++ Revision: 155775
+- new version and spec cleanup
+
+  + Olivier Blin <oblin@mandriva.com>
+    - restore BuildRoot
+
+  + Thierry Vignaud <tv@mandriva.org>
+    - kill re-definition of %%buildroot on Pixel's request
+
+* Sun Dec 16 2007 Anssi Hannula <anssi@mandriva.org> 1.0.5-1.0.2mdv2008.1
++ Revision: 120939
+- buildrequire java-rpmbuild, i.e. build with icedtea on x86(_64)
+
+* Fri Sep 21 2007 David Walluck <walluck@mandriva.org> 1.0.5-1.0.1mdv2008.0
++ Revision: 91767
+- enable gcj support
+- fix release tag
+- fix buildroot
+- remove spurious gnu-crypto BR
+- remove java-gcj-compat Requires
+- remove jars, don't just move them
+- don't build tests
+- fix javadoc (no ghost, no post(un))
+- fix gcj dir perms
+- fix ant call
+
+* Wed Sep 19 2007 Nicolas Vigier <nvigier@mandriva.com> 1.0.5-1mdv2008.0
++ Revision: 90967
+- adapt to mandriva
+- Import jfreechart
+
+
+
+* Fri May 18 2007 Ralph Apel <r.apel at r-apel.de> - 0:1.0.5-1jpp
+- Upgrade to 1.0.5
+- Make Vendor, Distribution based on macro
+- Add gcj_support option
+- No -demo subpackage, -experimental subpackage instead
+- Activate tests
+
+* Fri Apr 21 2006 Fernando Nasser <fnasser@redhat.com> - 0:0.9.21-3jpp
+- Make demo subpackage optional
+
+* Fri Apr 21 2006 Fernando Nasser <fnasser@redhat.com> - 0:0.9.21-2jpp
+- First JPP 1.7 build
+
+* Tue Sep 20 2005 Ralph Apel <r.apel at r-apel.de> - 0:0.9.21-1jpp
+- Upgrade to 0.9.21 
+
+* Thu Dec 02 2004 Ralph Apel <r.apel at r-apel.de> - 0:0.9.20-1jpp
+- Upgrade to 0.9.20 (last version with -demo included, for jboss32)
+
+* Sun Nov 14 2004 Ville Skyttä <scop at jpackage.org> - 0:0.9.16-3jpp
+- Remove bogus batik dependency.
+
+* Sun Aug 23 2004 Randy Watler <rwatler at finali.com> - 0.9.16-2jpp
+- Rebuild with ant-1.6.2
+
+* Tue Feb 17 2004 Kaj J. Niemi <kajtzu@fi.basen.net> 0.9.16-1jpp
+- 0.9.16
+
+* Fri May 09 2003 David Walluck <david@anti-microsoft.org> 0:0.9.8-1jpp
+- 0.9.8
+- update for JPackage 1.5
+
+* Fri Mar 11 2003 Henri Gomez <hgomez@users.sourceforge.net> 0.9.6-2jpp
+- update spec to respect JPP 1.5 policy
+
+* Tue Mar 08 2003 Henri Gomez <hgomez@users.sourceforge.net> 0.9.6-1jpp
+- 0.9.6
+- requires jcommon 0.7.2 min
+- no more sub package test
+
+* Mon Oct 28 2002 Henri Gomez <hgomez@users.sourceforge.net> 0.9.4-1jpp
+- Initial release
