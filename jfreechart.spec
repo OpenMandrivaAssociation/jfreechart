@@ -1,267 +1,169 @@
-# Copyright (c) 2000-2007, JPackage Project
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-# 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the
-#    distribution.
-# 3. Neither the name of the JPackage Project nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
+%{?_javapackages_macros:%_javapackages_macros}
+# want the fedora extensions...
+%global fedora 20
+# TODO: junit QA tests
 
-%define gcj_support 0
+Name:           jfreechart
+Version:        1.0.14
+Release:        10.0%{?dist}
+Summary:        Java chart library
 
-%define section   free
 
-%define jcommon_version 1.0.16
+License:        LGPLv2+
+URL:            http://www.jfree.org/jfreechart/
+Source0:        http://download.sourceforge.net/sourceforge/jfreechart/%{name}-%{version}.tar.gz
+Source1:        bnd.properties
 
-Name:             jfreechart
-Version:          1.0.13
-Release:          2
-Summary:          Charts Generation library
-License:          LGPLv2+
-URL:              http://www.jfree.org/jfreechart/
-Source0:          http://downloads.sourceforge.net/jfreechart/jfreechart-%{version}.tar.bz2
-Patch0:           jfreechart-1.0.5-build_xml.patch
-Patch1:           jfreechart-1.0.13-jarpath.patch
-Group:            Development/Java
-Requires:         jcommon >= 0:%{jcommon_version}
-BuildRequires:    ant >= 0:1.6
-BuildRequires:    ant-junit >= 0:1.6
-BuildRequires:    jcommon >= 0:%{jcommon_version}
-BuildRequires:    java-rpmbuild >= 0:1.6
-BuildRequires:    junit
-BuildRequires:    servlet
-BuildRequires:    xml-commons-apis
-BuildRequires:    itext
-%if ! %{gcj_support}
+Requires:       servlet java jpackage-utils
+Requires:       jcommon >= 1.0.17
+BuildRequires:  %{requires} ant java-devel servlet
+%if 0%{?fedora}
+BuildRequires:  eclipse-swt
+%endif
+# Required for converting jars to OSGi bundles
+BuildRequires:  aqute-bnd
+
 BuildArch:      noarch
-%endif
-%if %{gcj_support}
-BuildRequires:    java-gcj-compat-devel
-%endif
+Patch0:         remove_itext_dep.patch
 
 %description
-Free Java class library for generating charts.
+JFreeChart is a free 100% Java chart library that makes it easy for
+developers to display professional quality charts in their applications.
 
-%package experimental
-Summary:        Experimental components for %{name}
-Group:          Development/Java
+%if 0%{?fedora}
+%package swt
+Summary:        Experimental swt extension for jfreechart
+
 Requires:       %{name} = %{version}-%{release}
-%if %{gcj_support}
-Requires(post):   java-gcj-compat
-Requires(postun): java-gcj-compat
+Requires:       eclipse-swt jpackage-utils
+
+%description swt
+Experimental swt extension for jfreechart.
 %endif
 
-%description experimental
-%{summary}.
-
 %package javadoc
-Summary:        Javadoc for %{name}
-Group:            Development/Java
+Summary:        Javadocs for %{name}
+
+Requires:       %{name} = %{version}-%{release}
+Requires:       jpackage-utils
 
 %description javadoc
-Javadoc for %{name}.
+This package contains the API documentation for %{name}.
 
-%description javadoc -l fr
-Javadoc pour %{name}.
 
 %prep
 %setup -q
-%remove_java_binaries
-%patch0 -p0 -b .sav
-%patch1 -p0
+# Erase prebuilt files
+find \( -name '*.jar' -o -name '*.class' \) -exec rm -f '{}' \;
+%patch0
 
 %build
-
-%{ant} -f ant/build.xml \
-   -Djunit.jar=$(build-classpath junit) \
-   -Djcommon.jar=$(build-classpath jcommon) \
-   -Dservlet.jar=$(build-classpath servlet) \
-   -Dgnujaxp.jar=$(build-classpath xml-commons-apis) \
-   -Ditext.jar=$(build-classpath itext) \
-   -Dbuildstable=true -Dproject.outdir=. -Dbasedir=. \
-   compile compile-experimental javadoc maven-bundle
+CLASSPATH=$(build-classpath jcommon servlet) \
+        ant -f ant/build.xml \
+        compile javadoc
+%if 0%{?fedora}
+# See RHBZ#912664. There seems to be some dispute about build-classpath.
+# So don't use it for swt.
+ant -f ant/build-swt.xml \
+        -Dswt.jar=%{_libdir}/eclipse/swt.jar \
+        -Djcommon.jar=$(build-classpath jcommon) \
+        -Djfreechart.jar=lib/jfreechart-%{version}.jar
+%endif
+# Convert to OSGi bundle
+java -Djfreechart.bundle.version="%{version}" -jar $(build-classpath aqute-bnd) \
+   wrap -output lib/%{name}-%{version}.bar -properties %{SOURCE1} lib/%{name}-%{version}.jar
 
 %install
-rm -rf $RPM_BUILD_ROOT
-install -d -m 755 $RPM_BUILD_ROOT%{_javadir}/%{name}
-# jars
-install -d -m 755 $RPM_BUILD_ROOT%{_javadir}
-install -m 644 lib/%{name}-%{version}.jar $RPM_BUILD_ROOT%{_javadir}
-install -m 644 lib/%{name}-%{version}-experimental.jar $RPM_BUILD_ROOT%{_javadir}/%{name}-experimental-%{version}.jar
-(cd $RPM_BUILD_ROOT%{_javadir} && for jar in *-%{version}*.jar; do ln -sf ${jar} `echo $jar| sed  "s|-%{version}||g"`; done)
-# javadoc
-install -d -m 755 $RPM_BUILD_ROOT%{_javadocdir}/%{name}-%{version}
-cp -pr javadoc/* $RPM_BUILD_ROOT%{_javadocdir}/%{name}-%{version}
-ln -s %{name}-%{version} $RPM_BUILD_ROOT%{_javadocdir}/%{name}
+# Directory structure
+install -d $RPM_BUILD_ROOT%{_javadir}/%{name}
+install -d $RPM_BUILD_ROOT%{_javadocdir}/%{name}
+install -d $RPM_BUILD_ROOT%{_mavenpomdir}
 
-%{gcj_compile}
-
-%clean
-rm -rf $RPM_BUILD_ROOT
-
-%if %{gcj_support}
-%post
-%{update_gcjdb}
+# JARs and JavaDoc
+install -m 644 lib/jfreechart-%{version}.bar  $RPM_BUILD_ROOT%{_javadir}/%{name}/%{name}.jar
+%if 0%{?fedora}
+install -m 644 lib/swtgraphics2d.jar  $RPM_BUILD_ROOT%{_javadir}/%{name}/swtgraphics2d.jar
+install -m 644 lib/jfreechart-%{version}-swt.jar  $RPM_BUILD_ROOT%{_javadir}/%{name}/%{name}-swt.jar
 %endif
+cp -rp javadoc/. $RPM_BUILD_ROOT%{_javadocdir}/%{name}
 
-%if %{gcj_support}
-%postun
-%{clean_gcjdb}
-%endif
+# POM
+install -pm 644 pom.xml $RPM_BUILD_ROOT%{_mavenpomdir}/JPP.%{name}-%{name}.pom
 
-%if %{gcj_support}
-%post experimental
-%{update_gcjdb}
-%endif
-
-%if %{gcj_support}
-%postun experimental
-%{clean_gcjdb}
-%endif
+# DEPMAP
+%add_maven_depmap JPP.%{name}-%{name}.pom %{name}/%{name}.jar
 
 %files
-%defattr(0644,root,root,0755)
-%doc licence-LGPL.txt README.txt
-%{_javadir}/%{name}.jar
-%{_javadir}/%{name}-%{version}.jar
-%if %{gcj_support}
-%dir %{_libdir}/gcj/%{name}
-%attr(-,root,root) %{_libdir}/gcj/%{name}/%{name}-%{version}.jar.*
-%endif
+%{_mavenpomdir}/*
+%{_mavendepmapfragdir}/*
+%dir %{_javadir}/%{name}
+%{_javadir}/%{name}/%{name}.jar
+%doc ChangeLog licence-LGPL.txt NEWS README.txt
 
-%files experimental
-%defattr(0644,root,root,0755)
-%{_javadir}/%{name}-experimental-%{version}.jar
-%{_javadir}/%{name}-experimental.jar
-%if %{gcj_support}
-%attr(-,root,root) %{_libdir}/gcj/%{name}/%{name}-experimental-%{version}.jar.*
+%if 0%{?fedora}
+%files swt
+%{_javadir}/%{name}/swtgraphics2d*.jar
+%{_javadir}/%{name}/%{name}-swt*.jar
 %endif
 
 %files javadoc
-%defattr(0644,root,root,0755)
-%{_javadocdir}/%{name}-%{version}
 %{_javadocdir}/%{name}
 
-
 %changelog
-* Fri Aug 06 2010 Jerome Martin <jmartin@mandriva.org> 1.0.13-1mdv2011.0
-+ Revision: 566699
-- Version 1.0.13
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-10
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
-* Fri Nov 27 2009 Jerome Martin <jmartin@mandriva.org> 1.0.11-0.0.3mdv2010.1
-+ Revision: 470675
-- rebuild
+* Tue Feb 19 2013 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-9
+- Fix FTBFS due to build-classpath not finding swt.jar any
+  longer. See RHBZ#912664.
 
-* Fri Sep 11 2009 Thierry Vignaud <tv@mandriva.org> 1.0.11-0.0.2mdv2010.0
-+ Revision: 438029
-- rebuild
+* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
-* Mon Oct 20 2008 Alexander Kurtakov <akurtakov@mandriva.org> 1.0.11-0.0.1mdv2009.1
-+ Revision: 295815
-- 1.0.11
+* Wed Nov 21 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-7
+- Remove itext dependency in pom.
 
-* Fri Aug 08 2008 Thierry Vignaud <tv@mandriva.org> 1.0.10-2.0.1mdv2009.0
-+ Revision: 267210
-- rebuild early 2009.0 package (before pixel changes)
+* Fri Nov 16 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-6
+- Conditionally build jfreechart-swt.
 
-* Fri Jun 13 2008 Alexander Kurtakov <akurtakov@mandriva.org> 1.0.10-0.0.1mdv2009.0
-+ Revision: 218684
-- new version 1.0.10 and disable gcj compile
+* Mon Sep 17 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-4
+- Set proper Bundle-{Version,SymbolicName,Name} in manifest.
 
-* Mon Jan 21 2008 Alexander Kurtakov <akurtakov@mandriva.org> 1.0.9-0.0.1mdv2008.1
-+ Revision: 155775
-- new version and spec cleanup
+* Tue Jul 24 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-3
+- Add aqute bnd instructions so as to produce OSGi metadata.
+- Based on kdaniel's suggestion, use build-classpath script to find swt
 
-  + Olivier Blin <oblin@mandriva.com>
-    - restore BuildRoot
+* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
 
-  + Thierry Vignaud <tv@mandriva.org>
-    - kill re-definition of %%buildroot on Pixel's request
+* Mon Apr 23 2012 Alexander Kurtakov <akurtako@redhat.com> 1.0.14-1
+- Update to new upstream version 1.0.14.
+- Use pom.xml file from the tarball.
 
-* Sun Dec 16 2007 Anssi Hannula <anssi@mandriva.org> 1.0.5-1.0.2mdv2008.1
-+ Revision: 120939
-- buildrequire java-rpmbuild, i.e. build with icedtea on x86(_64)
+* Wed Feb 15 2012 Marek Goldmann <mgoldman@redhat.com> 1.0.13-5
+- Added Maven POM: BZ#789586
 
-* Fri Sep 21 2007 David Walluck <walluck@mandriva.org> 1.0.5-1.0.1mdv2008.0
-+ Revision: 91767
-- enable gcj support
-- fix release tag
-- fix buildroot
-- remove spurious gnu-crypto BR
-- remove java-gcj-compat Requires
-- remove jars, don't just move them
-- don't build tests
-- fix javadoc (no ghost, no post(un))
-- fix gcj dir perms
-- fix ant call
+* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.13-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
 
-* Wed Sep 19 2007 Nicolas Vigier <nvigier@mandriva.com> 1.0.5-1mdv2008.0
-+ Revision: 90967
-- adapt to mandriva
-- Import jfreechart
+* Wed Jun 29 2011 Alexander Kurtakov <akurtako@redhat.com> 1.0.13-3
+- Adapt to current guidelines.
 
+* Wed Feb 09 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.13-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
 
+* Mon Apr 19 2010 Lubomir Rintel <lkundrak@v3.sk> - 1.0.13-1
+- Update to a later release
+- Cosmetic fixes
 
-* Fri May 18 2007 Ralph Apel <r.apel at r-apel.de> - 0:1.0.5-1jpp
-- Upgrade to 1.0.5
-- Make Vendor, Distribution based on macro
-- Add gcj_support option
-- No -demo subpackage, -experimental subpackage instead
-- Activate tests
+* Mon Apr 19 2010 Lubomir Rintel <lkundrak@v3.sk> - 1.0.10-4
+- Enable SWT support (ELMORABITY Mohamed, #583339)
 
-* Fri Apr 21 2006 Fernando Nasser <fnasser@redhat.com> - 0:0.9.21-3jpp
-- Make demo subpackage optional
+* Fri Jul 24 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.10-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
 
-* Fri Apr 21 2006 Fernando Nasser <fnasser@redhat.com> - 0:0.9.21-2jpp
-- First JPP 1.7 build
+* Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.10-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_11_Mass_Rebuild
 
-* Tue Sep 20 2005 Ralph Apel <r.apel at r-apel.de> - 0:0.9.21-1jpp
-- Upgrade to 0.9.21 
-
-* Thu Dec 02 2004 Ralph Apel <r.apel at r-apel.de> - 0:0.9.20-1jpp
-- Upgrade to 0.9.20 (last version with -demo included, for jboss32)
-
-* Sun Nov 14 2004 Ville Skyttä <scop at jpackage.org> - 0:0.9.16-3jpp
-- Remove bogus batik dependency.
-
-* Sun Aug 23 2004 Randy Watler <rwatler at finali.com> - 0.9.16-2jpp
-- Rebuild with ant-1.6.2
-
-* Tue Feb 17 2004 Kaj J. Niemi <kajtzu@fi.basen.net> 0.9.16-1jpp
-- 0.9.16
-
-* Fri May 09 2003 David Walluck <david@anti-microsoft.org> 0:0.9.8-1jpp
-- 0.9.8
-- update for JPackage 1.5
-
-* Fri Mar 11 2003 Henri Gomez <hgomez@users.sourceforge.net> 0.9.6-2jpp
-- update spec to respect JPP 1.5 policy
-
-* Tue Mar 08 2003 Henri Gomez <hgomez@users.sourceforge.net> 0.9.6-1jpp
-- 0.9.6
-- requires jcommon 0.7.2 min
-- no more sub package test
-
-* Mon Oct 28 2002 Henri Gomez <hgomez@users.sourceforge.net> 0.9.4-1jpp
-- Initial release
+* Sat Jul 19 2008 Lubomir Rintel (Fedora Astronomy) <lkundrak@fedoraproject.org> - 1.0.10-1
+- Initial packaging
