@@ -1,2 +1,5 @@
 sources:
   jfreechart-1.0.14.tar.gz: 65eb6b35fd9212021a69fb74bd41936355ead480
+  jfreechart-1.0.14-10.0-omv2014.0.noarch.rpm: 40ce87a77060081781788fe81cb2530302c594a2
+  jfreechart-javadoc-1.0.14-10.0-omv2014.0.noarch.rpm: ee03451a0a24042912ede8db93540e6a3205eb56
+  jfreechart-swt-1.0.14-10.0-omv2014.0.noarch.rpm: bc86450c847a77758e3b227f9aa589031804f318
