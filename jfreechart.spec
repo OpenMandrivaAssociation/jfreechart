@@ -1,49 +1,37 @@
 %{?_javapackages_macros:%_javapackages_macros}
-# want the fedora extensions...
-%global fedora 20
-# TODO: junit QA tests
-
 Name:           jfreechart
-Version:        1.0.14
-Release:        10.1%{?dist}
+Version:        1.0.19
+Release:        2.1
 Summary:        Java chart library
-
-
+Group:          Development/Java
 License:        LGPLv2+
 URL:            http://www.jfree.org/jfreechart/
-Source0:        http://download.sourceforge.net/sourceforge/jfreechart/%{name}-%{version}.tar.gz
-Source1:        bnd.properties
+Source0:        http://download.sourceforge.net/sourceforge/jfreechart/%{name}-%{version}.zip
+Patch0:         build_swt_encoding_fix.patch
 
-Requires:       servlet java jpackage-utils
-Requires:       jcommon >= 1.0.17
-BuildRequires:  %{requires} ant java-devel servlet
-%if 0%{?fedora}
+BuildRequires:  maven-local
+BuildRequires:  maven-plugin-bundle
+BuildRequires:  mvn(org.jfree:jcommon) >= 1.0.23
+BuildRequires:  servlet >= 2.5
 BuildRequires:  eclipse-swt
-%endif
-# Required for converting jars to OSGi bundles
-BuildRequires:  aqute-bnd
 
 BuildArch:      noarch
-Patch0:         remove_itext_dep.patch
 
 %description
 JFreeChart is a free 100% Java chart library that makes it easy for
 developers to display professional quality charts in their applications.
 
-%if 0%{?fedora}
 %package swt
-Summary:        Experimental swt extension for jfreechart
-
+Summary:        Swt extension for jfreechart
 Requires:       %{name} = %{version}-%{release}
 Requires:       eclipse-swt jpackage-utils
 
 %description swt
 Experimental swt extension for jfreechart.
-%endif
 
 %package javadoc
 Summary:        Javadocs for %{name}
-
+Group:          Documentation
 Requires:       %{name} = %{version}-%{release}
 Requires:       jpackage-utils
 
@@ -55,61 +43,77 @@ This package contains the API documentation for %{name}.
 %setup -q
 # Erase prebuilt files
 find \( -name '*.jar' -o -name '*.class' \) -exec rm -f '{}' \;
-%patch0
+%patch0 -p2
+
+MVN_BUNDLE_PLUGIN_EXTRA_XML="<extensions>true</extensions>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>org.jfree.jfreechart</Bundle-SymbolicName>
+            <Bundle-Vendor>Fedora Project</Bundle-Vendor>
+            <Bundle-Version>%{version}</Bundle-Version>
+            <!-- Do not autogenerate uses clauses in Manifests -->
+            <Import-Package>
+              !javax.servlet,
+              !javax.servlet.http,
+              *
+            </Import-Package>
+            <_nouses>true</_nouses>
+          </instructions>
+        </configuration>"
+%pom_remove_plugin :maven-gpg-plugin
+%pom_remove_plugin :nexus-staging-maven-plugin
+%pom_remove_plugin :cobertura-maven-plugin
+%pom_remove_plugin :maven-site-plugin
+%pom_remove_plugin :animal-sniffer-maven-plugin
+%pom_remove_plugin :maven-jxr-plugin
+%pom_remove_plugin :maven-javadoc-plugin
+
+%pom_add_plugin org.apache.felix:maven-bundle-plugin . "$MVN_BUNDLE_PLUGIN_EXTRA_XML"
+%pom_add_plugin org.apache.maven.plugins:maven-javadoc-plugin . "<configuration><excludePackageNames>org.jfree.chart.fx*</excludePackageNames></configuration>"
+# Change to packaging type bundle so as to be able to use it
+# as an OSGi bundle.
+%pom_xpath_set "pom:packaging" "bundle"
 
 %build
-CLASSPATH=$(build-classpath jcommon servlet) \
-        ant -f ant/build.xml \
-        compile javadoc
-%if 0%{?fedora}
-# See RHBZ#912664. There seems to be some dispute about build-classpath.
-# So don't use it for swt.
+# Ignore failing test: SegmentedTimelineTest
+%mvn_build -- -Dmaven.test.failure.ignore=true
+
+# /usr/lib/java/swt.jar is an arch independent path to swt
 ant -f ant/build-swt.xml \
-        -Dswt.jar=%{_libdir}/eclipse/swt.jar \
+        -Dswt.jar=/usr/lib/java/swt.jar \
         -Djcommon.jar=$(build-classpath jcommon) \
-        -Djfreechart.jar=lib/jfreechart-%{version}.jar
-%endif
-# Convert to OSGi bundle
-java -Djfreechart.bundle.version="%{version}" -jar $(build-classpath aqute-bnd) \
-   wrap -output lib/%{name}-%{version}.bar -properties %{SOURCE1} lib/%{name}-%{version}.jar
+        -Djfreechart.jar=target/jfreechart-%{version}.jar
 
 %install
-# Directory structure
-install -d $RPM_BUILD_ROOT%{_javadir}/%{name}
-install -d $RPM_BUILD_ROOT%{_javadocdir}/%{name}
-install -d $RPM_BUILD_ROOT%{_mavenpomdir}
+%mvn_install
 
-# JARs and JavaDoc
-install -m 644 lib/jfreechart-%{version}.bar  $RPM_BUILD_ROOT%{_javadir}/%{name}/%{name}.jar
-%if 0%{?fedora}
 install -m 644 lib/swtgraphics2d.jar  $RPM_BUILD_ROOT%{_javadir}/%{name}/swtgraphics2d.jar
 install -m 644 lib/jfreechart-%{version}-swt.jar  $RPM_BUILD_ROOT%{_javadir}/%{name}/%{name}-swt.jar
-%endif
-cp -rp javadoc/. $RPM_BUILD_ROOT%{_javadocdir}/%{name}
 
-# POM
-install -pm 644 pom.xml $RPM_BUILD_ROOT%{_mavenpomdir}/JPP.%{name}-%{name}.pom
+%files -f .mfiles
+%doc ChangeLog NEWS README.txt
 
-# DEPMAP
-%add_maven_depmap JPP.%{name}-%{name}.pom %{name}/%{name}.jar
-
-%files
-%{_mavenpomdir}/*
-%{_mavendepmapfragdir}/*
-%dir %{_javadir}/%{name}
-%{_javadir}/%{name}/%{name}.jar
-%doc ChangeLog licence-LGPL.txt NEWS README.txt
-
-%if 0%{?fedora}
 %files swt
 %{_javadir}/%{name}/swtgraphics2d*.jar
 %{_javadir}/%{name}/%{name}-swt*.jar
-%endif
 
-%files javadoc
-%{_javadocdir}/%{name}
+%files javadoc -f .mfiles-javadoc
 
 %changelog
+* Thu Sep 04 2014 Severin Gehwolf <sgehwolf@redhat.com> 1.0.19-2
+- Don't Import-Package javax.servlet*
+
+* Tue Sep 02 2014 Severin Gehwolf <sgehwolf@redhat.com> 1.0.19-1
+- Update to upstream 1.0.19 release.
+- Switch to building with xmvn where possible (swt sub-package
+  still uses ant).
+
+* Tue Jun 10 2014 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-12
+- Fix FTBFS. Resolves RHBZ#1106941
+
+* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-11
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
 * Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-10
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
@@ -167,3 +171,4 @@ install -pm 644 pom.xml $RPM_BUILD_ROOT%{_mavenpomdir}/JPP.%{name}-%{name}.pom
 
 * Sat Jul 19 2008 Lubomir Rintel (Fedora Astronomy) <lkundrak@fedoraproject.org> - 1.0.10-1
 - Initial packaging
+

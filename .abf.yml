@@ -1,2 +1,4 @@
-sources:
+removed_sources:
   jfreechart-1.0.14.tar.gz: 65eb6b35fd9212021a69fb74bd41936355ead480
+sources:
+  jfreechart-1.0.19.zip: 651d8f52ec059b2db94f1dd462eccf3a443905d1
