@@ -1,7 +1,7 @@
 %{?_javapackages_macros:%_javapackages_macros}
 Name:           jfreechart
 Version:        1.0.19
-Release:        2.1
+Release:        2.2
 Summary:        Java chart library
 Group:          Development/Java
 License:        LGPLv2+
