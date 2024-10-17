@@ -5,7 +5,7 @@ Release:        2.3
 Summary:        Java chart library
 Group:          Development/Java
 License:        LGPLv2+
-URL:            http://www.jfree.org/jfreechart/
+URL:            https://www.jfree.org/jfreechart/
 Source0:        http://download.sourceforge.net/sourceforge/jfreechart/%{name}-%{version}.zip
 Patch0:         build_swt_encoding_fix.patch
 
