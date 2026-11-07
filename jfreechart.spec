@@ -1,174 +1,97 @@
-%{?_javapackages_macros:%_javapackages_macros}
-Name:           jfreechart
-Version:        1.0.19
-Release:        2.3
-Summary:        Java chart library
-Group:          Development/Java
-License:        LGPLv2+
-URL:            https://www.jfree.org/jfreechart/
-Source0:        http://download.sourceforge.net/sourceforge/jfreechart/%{name}-%{version}.zip
-Patch0:         build_swt_encoding_fix.patch
+Name:		jfreechart
+Version:	1.5.6
+Release:	1
+Summary:	Chart library for Java
+Group:		Development/Java
+License:	LGPLv2+
+URL:		https://www.jfree.org/jfreechart/
+Source0:	https://github.com/jfree/jfreechart/archive/refs/tags/v%{version}.tar.gz#/jfreechart-%{version}.tar.gz
 
-BuildRequires:  maven-local
-BuildRequires:  maven-plugin-bundle
-BuildRequires:  mvn(org.jfree:jcommon) >= 1.0.23
-BuildRequires:  servlet >= 2.5
-BuildRequires:  eclipse-swt
+BuildArch:	noarch
+BuildRequires:	python
+# Literal, so the first rpmbuild -bs records them before sysjar is installed.
+BuildRequires:	maven
+BuildRequires:	java-current-devel
+# Provided scope. The servlet helpers are optional at runtime, and builddep skips that scope.
+BuildRequires:	mvn(javax.servlet:javax.servlet-api)
+BuildSystem:	maven
+BuildOption(install):	--file-name jfreechart
 
-BuildArch:      noarch
+Obsoletes:	%{name}-swt < %{version}-%{release}
+Obsoletes:	%{name}-javadoc < %{version}-%{release}
 
 %description
-JFreeChart is a free 100% Java chart library that makes it easy for
-developers to display professional quality charts in their applications.
-
-%package swt
-Summary:        Swt extension for jfreechart
-Requires:       %{name} = %{version}-%{release}
-Requires:       eclipse-swt jpackage-utils
-
-%description swt
-Experimental swt extension for jfreechart.
-
-%package javadoc
-Summary:        Javadocs for %{name}
-Group:          Documentation
-Requires:       %{name} = %{version}-%{release}
-Requires:       jpackage-utils
-
-%description javadoc
-This package contains the API documentation for %{name}.
-
+JFreeChart draws bar, pie, line, XY, time series, and Sankey charts
+with Java2D. 1.5.6 requires Java 8. The classes that used to come
+from JCommon are part of this jar. 1.5.6 adds SymbolAxis.setSymbols,
+Crosshair label padding, and clearSeries methods on AbstractRenderer,
+and fixes XYBarRenderer label fitting. The servlet helpers in
+org.jfree.chart.servlet are deprecated upstream and stay in this jar.
+The old SWT subpackage and the separate JavaFX extension are not
+built. Tests are skipped. The automatic module name is
+org.jfree.jfreechart.
 
 %prep
-%setup -q
-# Erase prebuilt files
-find \( -name '*.jar' -o -name '*.class' \) -exec rm -f '{}' \;
-%patch0 -p2
+%autosetup -n jfreechart-%{version}
+python - <<'PY'
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
-MVN_BUNDLE_PLUGIN_EXTRA_XML="<extensions>true</extensions>
-        <configuration>
-          <instructions>
-            <Bundle-SymbolicName>org.jfree.jfreechart</Bundle-SymbolicName>
-            <Bundle-Vendor>Fedora Project</Bundle-Vendor>
-            <Bundle-Version>%{version}</Bundle-Version>
-            <!-- Do not autogenerate uses clauses in Manifests -->
-            <Import-Package>
-              !javax.servlet,
-              !javax.servlet.http,
-              *
-            </Import-Package>
-            <_nouses>true</_nouses>
-          </instructions>
-        </configuration>"
-%pom_remove_plugin :maven-gpg-plugin
-%pom_remove_plugin :nexus-staging-maven-plugin
-%pom_remove_plugin :cobertura-maven-plugin
-%pom_remove_plugin :maven-site-plugin
-%pom_remove_plugin :animal-sniffer-maven-plugin
-%pom_remove_plugin :maven-jxr-plugin
-%pom_remove_plugin :maven-javadoc-plugin
+NS = "http://maven.apache.org/POM/4.0.0"
+ET.register_namespace("", NS)
+tree = ET.parse("pom.xml")
+root = tree.getroot()
+parent_of = {child: parent for parent in root.iter() for child in list(parent)}
+scope_tag = "{" + NS + "}scope"
+art_tag = "{" + NS + "}artifactId"
+ver_tag = "{" + NS + "}version"
+removed = 0
+rewritten = 0
+for dep in list(root.iter("{" + NS + "}dependency")):
+    scope = dep.find(scope_tag)
+    if scope is not None and (scope.text or "") == "test":
+        parent_of[dep].remove(dep)
+        removed += 1
+        continue
+    art = dep.find(art_tag)
+    if art is not None and art.text == "servlet-api":
+        art.text = "javax.servlet-api"
+        ver = dep.find(ver_tag)
+        if ver is not None:
+            ver.text = "4.0.1"
+        rewritten += 1
+if removed != 3 or rewritten != 1:
+    raise SystemExit("dependency edit removed " + str(removed) + " rewritten " + str(rewritten))
+tree.write("pom.xml", encoding="utf-8", xml_declaration=True)
+text = Path("pom.xml").read_text(encoding="utf-8")
+for needle in (
+    "<artifactId>javax.servlet-api</artifactId>",
+    "<version>4.0.1</version>",
+    "<scope>provided</scope>",
+    "<source>1.8</source>",
+    "<target>1.8</target>",
+    "Automatic-Module-Name",
+    "org.jfree.jfreechart",
+):
+    if needle not in text:
+        raise SystemExit("pom missing " + needle)
+for needle in ("junit", "equalsverifier", "<artifactId>servlet-api</artifactId>", "<scope>test</scope>"):
+    if needle in text:
+        raise SystemExit("pom still contains " + needle)
+files = list(Path("src/main/java").rglob("*.java"))
+if len(files) != 658:
+    raise SystemExit("unexpected java file count " + str(len(files)))
+PY
 
-%pom_add_plugin org.apache.felix:maven-bundle-plugin . "$MVN_BUNDLE_PLUGIN_EXTRA_XML"
-%pom_add_plugin org.apache.maven.plugins:maven-javadoc-plugin . "<configuration><excludePackageNames>org.jfree.chart.fx*</excludePackageNames></configuration>"
-# Change to packaging type bundle so as to be able to use it
-# as an OSGi bundle.
-%pom_xpath_set "pom:packaging" "bundle"
-
-%build
-# Ignore failing test: SegmentedTimelineTest
-%mvn_build -- -Dmaven.test.failure.ignore=true
-
-# /usr/lib/java/swt.jar is an arch independent path to swt
-ant -f ant/build-swt.xml \
-        -Dswt.jar=/usr/lib/java/swt.jar \
-        -Djcommon.jar=$(build-classpath jcommon) \
-        -Djfreechart.jar=target/jfreechart-%{version}.jar
-
-%install
-%mvn_install
-
-install -m 644 lib/swtgraphics2d.jar  $RPM_BUILD_ROOT%{_javadir}/%{name}/swtgraphics2d.jar
-install -m 644 lib/jfreechart-%{version}-swt.jar  $RPM_BUILD_ROOT%{_javadir}/%{name}/%{name}-swt.jar
+%build -a
+cat > manifest-addition <<'EOF'
+Automatic-Module-Name: org.jfree.jfreechart
+EOF
+jar ufm target/jfreechart-%{version}.jar manifest-addition
+java --module-path target/jfreechart-%{version}.jar --describe-module org.jfree.jfreechart > module-describe.txt
+# A versioned jar prints "name@version ... automatic", not "name automatic".
+grep -q '^org.jfree.jfreechart' module-describe.txt || { cat module-describe.txt; exit 1; }
+grep -q ' automatic$' module-describe.txt || { cat module-describe.txt; exit 1; }
 
 %files -f .mfiles
-%doc ChangeLog NEWS README.txt
-
-%files swt
-%{_javadir}/%{name}/swtgraphics2d*.jar
-%{_javadir}/%{name}/%{name}-swt*.jar
-
-%files javadoc -f .mfiles-javadoc
-
-%changelog
-* Thu Sep 04 2014 Severin Gehwolf <sgehwolf@redhat.com> 1.0.19-2
-- Don't Import-Package javax.servlet*
-
-* Tue Sep 02 2014 Severin Gehwolf <sgehwolf@redhat.com> 1.0.19-1
-- Update to upstream 1.0.19 release.
-- Switch to building with xmvn where possible (swt sub-package
-  still uses ant).
-
-* Tue Jun 10 2014 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-12
-- Fix FTBFS. Resolves RHBZ#1106941
-
-* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-11
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
-
-* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-10
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
-
-* Tue Feb 19 2013 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-9
-- Fix FTBFS due to build-classpath not finding swt.jar any
-  longer. See RHBZ#912664.
-
-* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-8
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
-
-* Wed Nov 21 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-7
-- Remove itext dependency in pom.
-
-* Fri Nov 16 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-6
-- Conditionally build jfreechart-swt.
-
-* Mon Sep 17 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-4
-- Set proper Bundle-{Version,SymbolicName,Name} in manifest.
-
-* Tue Jul 24 2012 Severin Gehwolf <sgehwolf@redhat.com> 1.0.14-3
-- Add aqute bnd instructions so as to produce OSGi metadata.
-- Based on kdaniel's suggestion, use build-classpath script to find swt
-
-* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.14-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
-
-* Mon Apr 23 2012 Alexander Kurtakov <akurtako@redhat.com> 1.0.14-1
-- Update to new upstream version 1.0.14.
-- Use pom.xml file from the tarball.
-
-* Wed Feb 15 2012 Marek Goldmann <mgoldman@redhat.com> 1.0.13-5
-- Added Maven POM: BZ#789586
-
-* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.13-4
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
-
-* Wed Jun 29 2011 Alexander Kurtakov <akurtako@redhat.com> 1.0.13-3
-- Adapt to current guidelines.
-
-* Wed Feb 09 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.13-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
-
-* Mon Apr 19 2010 Lubomir Rintel <lkundrak@v3.sk> - 1.0.13-1
-- Update to a later release
-- Cosmetic fixes
-
-* Mon Apr 19 2010 Lubomir Rintel <lkundrak@v3.sk> - 1.0.10-4
-- Enable SWT support (ELMORABITY Mohamed, #583339)
-
-* Fri Jul 24 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.10-3
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
-
-* Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.10-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_11_Mass_Rebuild
-
-* Sat Jul 19 2008 Lubomir Rintel (Fedora Astronomy) <lkundrak@fedoraproject.org> - 1.0.10-1
-- Initial packaging
-
+%doc README.md licence-LGPL.txt
