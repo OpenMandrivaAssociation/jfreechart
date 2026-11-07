@@ -14,6 +14,9 @@ BuildRequires:	maven
 BuildRequires:	java-current-devel
 # Provided scope. The servlet helpers are optional at runtime, and builddep skips that scope.
 BuildRequires:	mvn(javax.servlet:javax.servlet-api)
+# The published servlet POM parents jvnet-parent 3. The package does not require it.
+# sysjar rewrites that parent to the installed jvnet-parent.
+BuildRequires:	mvn(net.java:jvnet-parent:pom::)
 BuildSystem:	maven
 BuildOption(install):	--file-name jfreechart
 
